@@ -81,4 +81,17 @@ config TINYCRYPT_AES_CMAC
 	depends on TINYCRYPT_AES
 	help
 	  This option enables support for AES-128 CMAC mode.
+
+config XCRYPTO
+    bool "XCrypto Support"
+    help
+      This option enables XCrypto support for TinyCrypt.
+
+if XCRYPTO
+config TINYCRYPT_XCRYPTO_AES
+    bool "XCrypto AES-128 decrypt/encrypt"
+    depends on !TINYCRYPT_AES
+    help
+      This option enables support for XCrypto AES-128.
+endif
 endif
