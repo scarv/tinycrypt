@@ -157,35 +157,28 @@ static inline void shift_rows(uint8_t *s)
 
 int tc_aes_encrypt(uint8_t *out, const uint8_t *in, const TCAesKeySched_t s)
 {
-	uint8_t state[Nk*Nb];
-	unsigned int i;
+    uint8_t key[16];
 
-	if (out == (uint8_t *) 0) {
-		return TC_CRYPTO_FAIL;
-	} else if (in == (const uint8_t *) 0) {
-		return TC_CRYPTO_FAIL;
-	} else if (s == (TCAesKeySched_t) 0) {
-		return TC_CRYPTO_FAIL;
-	}
+	key[0] = (uint8_t)(s->words[0] >> 24) & 0xFF;
+    key[1] = (uint8_t)(s->words[0] >> 16) & 0xFF;
+	key[2] = (uint8_t)(s->words[0] >> 8) & 0xFF;
+    key[3] = (uint8_t)(s->words[0]) & 0xFF;
+	key[4] = (uint8_t)(s->words[1] >> 24) & 0xFF;
+    key[5] = (uint8_t)(s->words[1] >> 16) & 0xFF;
+	key[6] = (uint8_t)(s->words[1] >> 8) & 0xFF;
+    key[7] = (uint8_t)(s->words[1]) & 0xFF;
+	key[8] = (uint8_t)(s->words[2] >> 24) & 0xFF;
+    key[9] = (uint8_t)(s->words[2] >> 16) & 0xFF;
+	key[10] = (uint8_t)(s->words[2] >> 8) & 0xFF;
+    key[11] = (uint8_t)(s->words[2]) & 0xFF;
+	key[12] = (uint8_t)(s->words[3] >> 24) & 0xFF;
+    key[13] = (uint8_t)(s->words[3] >> 16) & 0xFF;
+	key[14] = (uint8_t)(s->words[3] >> 8) & 0xFF;
+    key[15] = (uint8_t)(s->words[3]) & 0xFF;
 
-	(void)_copy(state, sizeof(state), in, sizeof(state));
-	add_round_key(state, s->words);
+    printf("%s", key);
 
-	for (i = 0; i < (Nr - 1); ++i) {
-		sub_bytes(state);
-		shift_rows(state);
-		mix_columns(state);
-		add_round_key(state, s->words + Nb*(i+1));
-	}
-
-	sub_bytes(state);
-	shift_rows(state);
-	add_round_key(state, s->words + Nb*(i+1));
-
-	(void)_copy(out, sizeof(state), state, sizeof(state));
-
-	/* zeroing out the state buffer */
-	_set(state, TC_ZERO_BYTE, sizeof(state));
+    aes_enc(out, in, key);
 
 	return TC_CRYPTO_SUCCESS;
 }
