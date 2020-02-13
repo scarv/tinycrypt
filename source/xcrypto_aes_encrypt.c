@@ -67,118 +67,72 @@ static inline unsigned int rotword(unsigned int a)
 #define subbyte(a, o)(sbox[((a) >> (o))&0xff] << (o))
 #define subword(a)(subbyte(a, 24)|subbyte(a, 16)|subbyte(a, 8)|subbyte(a, 0))
 
-int tc_aes128_set_encrypt_key(TCAesKeySched_t s, const uint8_t *k)
-{
-	const unsigned int rconst[11] = {
-		0x00000000, 0x01000000, 0x02000000, 0x04000000, 0x08000000, 0x10000000,
-		0x20000000, 0x40000000, 0x80000000, 0x1b000000, 0x36000000
-	};
-	unsigned int i;
-	unsigned int t;
+void aes_enc_exp_step( uint8_t* r, const uint8_t* rk, uint8_t rcon ) {
+    r[  0 ] = rcon ^ sbox[ rk[ 13 ] ] ^ rk[  0 ];
+    r[  1 ] =        sbox[ rk[ 14 ] ] ^ rk[  1 ];
+    r[  2 ] =        sbox[ rk[ 15 ] ] ^ rk[  2 ];
+    r[  3 ] =        sbox[ rk[ 12 ] ] ^ rk[  3 ];
+    
+    r[  4 ] =                       r[  0 ]   ^ rk[  4 ];
+    r[  5 ] =                       r[  1 ]   ^ rk[  5 ];
+    r[  6 ] =                       r[  2 ]   ^ rk[  6 ];
+    r[  7 ] =                       r[  3 ]   ^ rk[  7 ];
+    
+    r[  8 ] =                       r[  4 ]   ^ rk[  8 ];
+    r[  9 ] =                       r[  5 ]   ^ rk[  9 ];
+    r[ 10 ] =                       r[  6 ]   ^ rk[ 10 ];
+    r[ 11 ] =                       r[  7 ]   ^ rk[ 11 ];
+    
+    r[ 12 ] =                       r[  8 ]   ^ rk[ 12 ];
+    r[ 13 ] =                       r[  9 ]   ^ rk[ 13 ];
+    r[ 14 ] =                       r[ 10 ]   ^ rk[ 14 ];
+    r[ 15 ] =                       r[ 11 ]   ^ rk[ 15 ];
+}
+
+#define U8_TO_U8_N(r,x) { \
+    (r)[  0 ] = (x)[  0 ]; (r)[  1 ] = (x)[  1 ]; (r)[  2 ] = (x)[  2 ]; (r)[  3 ] = (x)[  3 ]; \
+    (r)[  4 ] = (x)[  4 ]; (r)[  5 ] = (x)[  5 ]; (r)[  6 ] = (x)[  6 ]; (r)[  7 ] = (x)[  7 ]; \
+    (r)[  8 ] = (x)[  8 ]; (r)[  9 ] = (x)[  9 ]; (r)[ 10 ] = (x)[ 10 ]; (r)[ 11 ] = (x)[ 11 ]; \
+    (r)[ 12 ] = (x)[ 12 ]; (r)[ 13 ] = (x)[ 13 ]; (r)[ 14 ] = (x)[ 14 ]; (r)[ 15 ] = (x)[ 15 ]; \
+}
+
+#define U8_TO_U8_T(r,x) { \
+    (r)[  0 ] = (x)[  0 ]; (r)[  1 ] = (x)[  4 ]; (r)[  2 ] = (x)[  8 ]; (r)[  3 ] = (x)[ 12 ]; \
+    (r)[  4 ] = (x)[  1 ]; (r)[  5 ] = (x)[  5 ]; (r)[  6 ] = (x)[  9 ]; (r)[  7 ] = (x)[ 13 ]; \
+    (r)[  8 ] = (x)[  2 ]; (r)[  9 ] = (x)[  6 ]; (r)[ 10 ] = (x)[ 10 ]; (r)[ 11 ] = (x)[ 14 ]; \
+    (r)[ 12 ] = (x)[  3 ]; (r)[ 13 ] = (x)[  7 ]; (r)[ 14 ] = (x)[ 11 ]; (r)[ 15 ] = (x)[ 15 ]; \
+}
+
+int tc_aes128_set_encrypt_key(TCAesKeySched_t s, const uint8_t* k) {
+    uint8_t rcp[11] = {
+        0x8D, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40,
+        0x80, 0x1B, 0x36
+    };
+    uint8_t*  rp = s->words;
 
 	if (s == (TCAesKeySched_t) 0) {
 		return TC_CRYPTO_FAIL;
 	} else if (k == (const uint8_t *) 0) {
 		return TC_CRYPTO_FAIL;
 	}
+    
+    U8_TO_U8_N(rp, k);
+    
+    for (int i = 1; i < 11; i++) {
+        aes_enc_exp_step(rp + (4 * Nb), rp, rcp[i]);
 
-	for (i = 0; i < Nk; ++i) {
-		s->words[i] = (k[Nb*i]<<24) | (k[Nb*i+1]<<16) |
-			      (k[Nb*i+2]<<8) | (k[Nb*i+3]);
-	}
+        rp += (4 * Nb);
+    }
 
-	for (; i < (Nb * (Nr + 1)); ++i) {
-		t = s->words[i-1];
-		if ((i % Nk) == 0) {
-			t = subword(rotword(t)) ^ rconst[i/Nk];
-		}
-		s->words[i] = s->words[i-Nk] ^ t;
-	}
-
-	return TC_CRYPTO_SUCCESS;
-}
-
-static inline void add_round_key(uint8_t *s, const unsigned int *k)
-{
-	s[0] ^= (uint8_t)(k[0] >> 24); s[1] ^= (uint8_t)(k[0] >> 16);
-	s[2] ^= (uint8_t)(k[0] >> 8); s[3] ^= (uint8_t)(k[0]);
-	s[4] ^= (uint8_t)(k[1] >> 24); s[5] ^= (uint8_t)(k[1] >> 16);
-	s[6] ^= (uint8_t)(k[1] >> 8); s[7] ^= (uint8_t)(k[1]);
-	s[8] ^= (uint8_t)(k[2] >> 24); s[9] ^= (uint8_t)(k[2] >> 16);
-	s[10] ^= (uint8_t)(k[2] >> 8); s[11] ^= (uint8_t)(k[2]);
-	s[12] ^= (uint8_t)(k[3] >> 24); s[13] ^= (uint8_t)(k[3] >> 16);
-	s[14] ^= (uint8_t)(k[3] >> 8); s[15] ^= (uint8_t)(k[3]);
-}
-
-static inline void sub_bytes(uint8_t *s)
-{
-	unsigned int i;
-
-	for (i = 0; i < (Nb * Nk); ++i) {
-		s[i] = sbox[s[i]];
-	}
-}
-
-#define triple(a)(_double_byte(a)^(a))
-
-static inline void mult_row_column(uint8_t *out, const uint8_t *in)
-{
-	out[0] = _double_byte(in[0]) ^ triple(in[1]) ^ in[2] ^ in[3];
-	out[1] = in[0] ^ _double_byte(in[1]) ^ triple(in[2]) ^ in[3];
-	out[2] = in[0] ^ in[1] ^ _double_byte(in[2]) ^ triple(in[3]);
-	out[3] = triple(in[0]) ^ in[1] ^ in[2] ^ _double_byte(in[3]);
-}
-
-static inline void mix_columns(uint8_t *s)
-{
-	uint8_t t[Nb*Nk];
-
-	mult_row_column(t, s);
-	mult_row_column(&t[Nb], s+Nb);
-	mult_row_column(&t[2 * Nb], s + (2 * Nb));
-	mult_row_column(&t[3 * Nb], s + (3 * Nb));
-	(void) _copy(s, sizeof(t), t, sizeof(t));
-}
-
-/*
- * This shift_rows also implements the matrix flip required for mix_columns, but
- * performs it here to reduce the number of memory operations.
- */
-static inline void shift_rows(uint8_t *s)
-{
-	uint8_t t[Nb * Nk];
-
-	t[0]  = s[0]; t[1] = s[5]; t[2] = s[10]; t[3] = s[15];
-	t[4]  = s[4]; t[5] = s[9]; t[6] = s[14]; t[7] = s[3];
-	t[8]  = s[8]; t[9] = s[13]; t[10] = s[2]; t[11] = s[7];
-	t[12] = s[12]; t[13] = s[1]; t[14] = s[6]; t[15] = s[11];
-	(void) _copy(s, sizeof(t), t, sizeof(t));
+    return TC_CRYPTO_SUCCESS;
 }
 
 int tc_aes_encrypt(uint8_t *out, const uint8_t *in, const TCAesKeySched_t s)
 {
-    uint8_t key[16];
+    //printf("xcrypto aes key: %s\n", exp_key);
+    //printf("xcrypto aes key: %s\n", (uint8_t *)s->words);
 
-	key[0] = (uint8_t)(s->words[0] >> 24) & 0xFF;
-    key[1] = (uint8_t)(s->words[0] >> 16) & 0xFF;
-	key[2] = (uint8_t)(s->words[0] >> 8) & 0xFF;
-    key[3] = (uint8_t)(s->words[0]) & 0xFF;
-	key[4] = (uint8_t)(s->words[1] >> 24) & 0xFF;
-    key[5] = (uint8_t)(s->words[1] >> 16) & 0xFF;
-	key[6] = (uint8_t)(s->words[1] >> 8) & 0xFF;
-    key[7] = (uint8_t)(s->words[1]) & 0xFF;
-	key[8] = (uint8_t)(s->words[2] >> 24) & 0xFF;
-    key[9] = (uint8_t)(s->words[2] >> 16) & 0xFF;
-	key[10] = (uint8_t)(s->words[2] >> 8) & 0xFF;
-    key[11] = (uint8_t)(s->words[2]) & 0xFF;
-	key[12] = (uint8_t)(s->words[3] >> 24) & 0xFF;
-    key[13] = (uint8_t)(s->words[3] >> 16) & 0xFF;
-	key[14] = (uint8_t)(s->words[3] >> 8) & 0xFF;
-    key[15] = (uint8_t)(s->words[3]) & 0xFF;
-
-    printf("%s", key);
-
-    aes_enc(out, in, key);
+    aes_enc(out, in, s->words);
 
 	return TC_CRYPTO_SUCCESS;
 }

@@ -49,11 +49,57 @@
 	
 aes_enc: AES_LDM         t0, t1, t2, t3, a1
 
-
          AES_LDM         t4, t5, t6, a7, a2
+        /*
+         * a0 = out[16]
+         * a1 = in[16]
+         * a2 = key[16]
+         *
+         * t0 = in[0..3]
+         * t1 = in[4..7]
+         * t2 = in[8..11]
+         * t3 = in[12..15]
+         *
+         * t4 = key[0..3]
+         * t5 = key[4..7]
+         * t6 = key[8..11]
+         * a7 = key[12..15]
+         */
          AES_ENC_RND_KEY t0, t1, t2, t3, t4, t5, t6, a7
+        /*
+         * a0 = out[16]
+         * a1 = in[16]
+         * a2 = key[16]
+         *
+         * t0 = in[0..3] xor key[0..3]
+         * t1 = in[4..7] xor key[4..7]
+         * t2 = in[8..11] xor key[8..11]
+         * t3 = in[12..15] xor key[12..15]
+         *
+         * t4 = key[0..3]
+         * t5 = key[4..7]
+         * t6 = key[8..11]
+         * a7 = key[12..15]
+         */
 
          li a6, 9
+        /*
+         * a0 = out[16]
+         * a1 = in[16]
+         * a2 = key[16]
+         *
+         * t0 = in[0..3] xor key[0..3]
+         * t1 = in[4..7] xor key[4..7]
+         * t2 = in[8..11] xor key[8..11]
+         * t3 = in[12..15] xor key[12..15]
+         *
+         * t4 = key[0..3]
+         * t5 = key[4..7]
+         * t6 = key[8..11]
+         * a7 = key[12..15]
+         *
+         * a6 = 9
+         */
 
 .l0:     xc.aessub.enc   t4, t0, t1
          xc.aessub.enc   t5, t2, t3
