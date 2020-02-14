@@ -118,7 +118,7 @@ int tc_aes128_set_encrypt_key(TCAesKeySched_t s, const uint8_t* k) {
     
     U8_TO_U8_N(rp, k);
     
-    for (int i = 1; i < 11; i++) {
+    for (int i = 1; i < Nr + 1; i++) {
         aes_enc_exp_step(rp + (4 * Nb), rp, rcp[i]);
 
         rp += (4 * Nb);
