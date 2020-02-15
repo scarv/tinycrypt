@@ -111,6 +111,12 @@ aes_enc: AES_LDM         t0, t1, t2, t3, a1
          xc.aesmix.enc   t2, t5, t4
          xc.aesmix.enc   t3, a7, t6
 
+         /* begin debug return */
+         AES_STM         t0, t1, t2, t3, a0
+
+         ret
+         /* end debug return */
+
          addi a2, a2,  16
          AES_LDM         t4, t5, t6, a7, a2
          AES_ENC_RND_KEY t0, t1, t2, t3, t4, t5, t6, a7
