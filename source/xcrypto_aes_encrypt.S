@@ -125,6 +125,10 @@ aes_dec: AES_LDM         t0, t1, t2, t3, a1
          li a6, 9
 
 .l02:    xc.aessub.dec   t4, t0, t3
+
+         AES_STM         t4, t5, t6, a7, a0
+
+         ret
          xc.aessub.dec   t5, t1, t0
          xc.aessub.dec   t6, t2, t1
          xc.aessub.dec   a7, t3, t2
