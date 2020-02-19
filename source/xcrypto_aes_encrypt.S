@@ -50,56 +50,9 @@
 aes_enc: AES_LDM         t0, t1, t2, t3, a1
 
          AES_LDM         t4, t5, t6, a7, a2
-        /*
-         * a0 = out[16]
-         * a1 = in[16]
-         * a2 = key[16]
-         *
-         * t0 = in[0..3]
-         * t1 = in[4..7]
-         * t2 = in[8..11]
-         * t3 = in[12..15]
-         *
-         * t4 = key[0..3]
-         * t5 = key[4..7]
-         * t6 = key[8..11]
-         * a7 = key[12..15]
-         */
          AES_ENC_RND_KEY t0, t1, t2, t3, t4, t5, t6, a7
-        /*
-         * a0 = out[16]
-         * a1 = in[16]
-         * a2 = key[16]
-         *
-         * t0 = in[0..3] xor key[0..3]
-         * t1 = in[4..7] xor key[4..7]
-         * t2 = in[8..11] xor key[8..11]
-         * t3 = in[12..15] xor key[12..15]
-         *
-         * t4 = key[0..3]
-         * t5 = key[4..7]
-         * t6 = key[8..11]
-         * a7 = key[12..15]
-         */
 
          li a6, 9
-        /*
-         * a0 = out[16]
-         * a1 = in[16]
-         * a2 = key[16]
-         *
-         * t0 = in[0..3] xor key[0..3]
-         * t1 = in[4..7] xor key[4..7]
-         * t2 = in[8..11] xor key[8..11]
-         * t3 = in[12..15] xor key[12..15]
-         *
-         * t4 = key[0..3]
-         * t5 = key[4..7]
-         * t6 = key[8..11]
-         * a7 = key[12..15]
-         *
-         * a6 = 9
-         */
 
 .l0:     xc.aessub.enc   t4, t0, t1
          xc.aessub.enc   t5, t2, t3
@@ -110,12 +63,6 @@ aes_enc: AES_LDM         t0, t1, t2, t3, a1
          xc.aesmix.enc   t1, t6, a7
          xc.aesmix.enc   t2, t5, t4
          xc.aesmix.enc   t3, a7, t6
-
-         /* begin debug return */
-         AES_STM         t0, t1, t2, t3, a0
-
-         ret
-         /* end debug return */
 
          addi a2, a2,  16
          AES_LDM         t4, t5, t6, a7, a2
@@ -151,6 +98,76 @@ aes_enc: AES_LDM         t0, t1, t2, t3, a1
          addi a2, a2,  16
          AES_LDM         t4, t5, t6, a7, a2
          AES_ENC_RND_KEY t0, t1, t2, t3, t4, t5, t6, a7
+
+         AES_STM         t0, t1, t2, t3, a0
+
+         ret
+
+.endfunc
+
+.func    aes_dec
+.global  aes_dec
+
+// void aes_dec( uint8_t* r, uint8_t* c, uint8_t* k );
+//
+// a0 =  uint8_t* r
+// a1 =  uint8_t* c
+// a2 =  uint8_t* k
+//
+// a6 = i
+
+aes_dec: AES_LDM         t0, t1, t2, t3, a1
+
+         addi a2, a2,  16 * 10
+         AES_LDM         t4, t5, t6, a7, a2
+         AES_DEC_RND_KEY t0, t1, t2, t3, t4, t5, t6, a7
+
+         li a6, 9
+
+.l02:    xc.aessub.dec   t4, t0, t3
+         xc.aessub.dec   t5, t1, t0
+         xc.aessub.dec   t6, t2, t1
+         xc.aessub.dec   a7, t3, t2
+
+         xc.aesmix.dec   t0, t4, t6
+         xc.aesmix.dec   t1, t5, a7
+         xc.aesmix.dec   t2, t6, t4
+         xc.aesmix.dec   t3, a7, t5
+
+         addi a2, a2, -16
+         AES_LDM         t4, t5, t6, a7, a2
+         AES_DEC_RND_KEY t0, t1, t2, t3, t4, t5, t6, a7
+
+         addi a6, a6, -1
+         bgtz a6, .l02
+
+         li     a3, 0x0000FFFF
+         li     a4, 0xFFFF0000
+
+         xc.aessub.dec   t4, t2, t1
+         xc.aessub.dec   t5, t3, t2
+         xc.aessub.dec   t6, t0, t3
+         xc.aessub.dec   a7, t1, t0
+
+         and    a5, t6, a3          // a5 =  X, X, 0, 5
+         and    a6, t4, a4          // a6 = 15,10, X, X
+         or     t0, a5, a6          // t0 = 15,10, 0, 5
+
+         and    a5, a7, a3          // a5 =  X, X, 4, 9
+         and    a6, t5, a4          // a6 =  3,14, X, X
+         or     t1, a5, a6
+
+         and    a5, t4, a3          // a5 =  X, X, 8, 3
+         and    a6, t6, a4          // a6 =  7, 2, X, X
+         or     t2, a5, a6
+
+         and    a5, t5, a3          // a5 =  X, X,12, 1
+         and    a6, a7, a4          // a6 = 11, 6, X, X
+         or     t3, a5, a6
+
+         addi a2, a2, -16
+         AES_LDM         t4, t5, t6, a7, a2
+         AES_DEC_RND_KEY t0, t1, t2, t3, t4, t5, t6, a7
 
          AES_STM         t0, t1, t2, t3, a0
 

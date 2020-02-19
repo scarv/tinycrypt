@@ -129,9 +129,6 @@ int tc_aes128_set_encrypt_key(TCAesKeySched_t s, const uint8_t* k) {
 
 int tc_aes_encrypt(uint8_t *out, const uint8_t *in, const TCAesKeySched_t s)
 {
-    //printf("xcrypto aes key: %s\n", exp_key);
-    //printf("xcrypto aes key: %s\n", (uint8_t *)s->words);
-
     aes_enc(out, in, s->words);
 
 	return TC_CRYPTO_SUCCESS;

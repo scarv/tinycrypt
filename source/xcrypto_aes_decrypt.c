@@ -128,37 +128,7 @@ static inline void inv_shift_rows(uint8_t *s)
 
 int tc_aes_decrypt(uint8_t *out, const uint8_t *in, const TCAesKeySched_t s)
 {
-	uint8_t state[Nk*Nb];
-	unsigned int i;
-
-	if (out == (uint8_t *) 0) {
-		return TC_CRYPTO_FAIL;
-	} else if (in == (const uint8_t *) 0) {
-		return TC_CRYPTO_FAIL;
-	} else if (s == (TCAesKeySched_t) 0) {
-		return TC_CRYPTO_FAIL;
-	}
-
-	(void)_copy(state, sizeof(state), in, sizeof(state));
-
-	add_round_key(state, s->words + Nb*Nr);
-
-	for (i = Nr - 1; i > 0; --i) {
-		inv_shift_rows(state);
-		inv_sub_bytes(state);
-		add_round_key(state, s->words + Nb*i);
-		inv_mix_columns(state);
-	}
-
-	inv_shift_rows(state);
-	inv_sub_bytes(state);
-	add_round_key(state, s->words);
-
-	(void)_copy(out, sizeof(state), state, sizeof(state));
-
-	/*zeroing out the state buffer */
-	_set(state, TC_ZERO_BYTE, sizeof(state));
-
+    aes_dec(out, in, s->words);
 
 	return TC_CRYPTO_SUCCESS;
 }
