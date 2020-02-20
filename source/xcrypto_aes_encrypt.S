@@ -125,10 +125,6 @@ aes_dec: AES_LDM         t0, t1, t2, t3, a1
          li a6, 9
 
 .l02:    xc.aessub.dec   t4, t0, t3
-
-         AES_STM         t4, t5, t6, a7, a0
-
-         ret
          xc.aessub.dec   t5, t1, t0
          xc.aessub.dec   t6, t2, t1
          xc.aessub.dec   a7, t3, t2
@@ -141,6 +137,10 @@ aes_dec: AES_LDM         t0, t1, t2, t3, a1
          addi a2, a2, -16
          AES_LDM         t4, t5, t6, a7, a2
          AES_DEC_RND_KEY t0, t1, t2, t3, t4, t5, t6, a7
+
+         AES_STM         t0, t1, t2, t3, a0
+
+         ret
 
          addi a6, a6, -1
          bgtz a6, .l02
@@ -175,6 +175,32 @@ aes_dec: AES_LDM         t0, t1, t2, t3, a1
 
          AES_STM         t0, t1, t2, t3, a0
 
+         ret
+
+.endfunc
+
+.func    aes_sub
+.global  aes_sub
+
+// uint32_t aes_dec(uint32_t input);
+//
+// a0 =  uint32_t input
+
+aes_sub: xc.aessub.enc a0, a0, a0
+         
+         ret
+
+.endfunc
+
+.func    aes_mix_inv
+.global  aes_mix_inv
+
+// uint32_t aes_mix_inv(uint32_t input);
+//
+// a0 =  uint32_t input
+
+aes_mix_inv: xc.aesmix.dec a0, a0, a0
+         
          ret
 
 .endfunc

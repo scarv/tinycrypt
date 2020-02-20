@@ -68,25 +68,25 @@ static inline unsigned int rotword(unsigned int a)
 #define subword(a)(subbyte(a, 24)|subbyte(a, 16)|subbyte(a, 8)|subbyte(a, 0))
 
 void aes_enc_exp_step( uint8_t* r, const uint8_t* rk, uint8_t rcon ) {
-    r[  0 ] = rcon ^ sbox[ rk[ 13 ] ] ^ rk[  0 ];
-    r[  1 ] =        sbox[ rk[ 14 ] ] ^ rk[  1 ];
-    r[  2 ] =        sbox[ rk[ 15 ] ] ^ rk[  2 ];
-    r[  3 ] =        sbox[ rk[ 12 ] ] ^ rk[  3 ];
+    r[0] = rcon ^ aes_sub(rk[13]) ^ rk[0];
+    r[1] =        aes_sub(rk[14]) ^ rk[1];
+    r[2] =        aes_sub(rk[15]) ^ rk[2];
+    r[3] =        aes_sub(rk[12]) ^ rk[3];
     
-    r[  4 ] =                       r[  0 ]   ^ rk[  4 ];
-    r[  5 ] =                       r[  1 ]   ^ rk[  5 ];
-    r[  6 ] =                       r[  2 ]   ^ rk[  6 ];
-    r[  7 ] =                       r[  3 ]   ^ rk[  7 ];
+    r[4] =        r[0] ^ rk[4];
+    r[5] =        r[1] ^ rk[5];
+    r[6] =        r[2] ^ rk[6];
+    r[7] =        r[3] ^ rk[7];
     
-    r[  8 ] =                       r[  4 ]   ^ rk[  8 ];
-    r[  9 ] =                       r[  5 ]   ^ rk[  9 ];
-    r[ 10 ] =                       r[  6 ]   ^ rk[ 10 ];
-    r[ 11 ] =                       r[  7 ]   ^ rk[ 11 ];
+    r[8] =        r[4] ^ rk[8];
+    r[9] =        r[5] ^ rk[9];
+    r[10] =        r[6] ^ rk[10];
+    r[11] =        r[7] ^ rk[11];
     
-    r[ 12 ] =                       r[  8 ]   ^ rk[ 12 ];
-    r[ 13 ] =                       r[  9 ]   ^ rk[ 13 ];
-    r[ 14 ] =                       r[ 10 ]   ^ rk[ 14 ];
-    r[ 15 ] =                       r[ 11 ]   ^ rk[ 15 ];
+    r[12] =        r[8] ^ rk[12];
+    r[13] =        r[9] ^ rk[13];
+    r[14] =        r[10] ^ rk[14];
+    r[15] =        r[11] ^ rk[15];
 }
 
 #define U8_TO_U8_N(r,x) { \
