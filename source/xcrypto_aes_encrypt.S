@@ -138,10 +138,6 @@ aes_dec: AES_LDM         t0, t1, t2, t3, a1
          AES_LDM         t4, t5, t6, a7, a2
          AES_DEC_RND_KEY t0, t1, t2, t3, t4, t5, t6, a7
 
-         AES_STM         t0, t1, t2, t3, a0
-
-         ret
-
          addi a6, a6, -1
          bgtz a6, .l02
 
@@ -201,6 +197,6 @@ aes_sub: xc.aessub.enc a0, a0, a0
 
 aes_mix_inv: xc.aesmix.dec a0, a0, a0
          
-         ret
+             ret
 
 .endfunc
