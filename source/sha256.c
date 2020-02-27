@@ -190,6 +190,8 @@ static void compress(unsigned int *iv, const uint8_t *data)
 	a = iv[0]; b = iv[1]; c = iv[2]; d = iv[3];
 	e = iv[4]; f = iv[5]; g = iv[6]; h = iv[7];
 
+    printf("%x\n", a);
+
 	for (i = 0; i < 16; ++i) {
 		n = BigEndian(&data);
 		t1 = work_space[i] = n;
@@ -211,6 +213,8 @@ static void compress(unsigned int *iv, const uint8_t *data)
 		h = g; g = f; f = e; e = d + t1;
 		d = c; c = b; b = a; a = t1 + t2;
 	}
+
+    printf("%x %x %x %x %x %x %x %x\n", a, b, c, d, e, f, g, h);
 
 	iv[0] += a; iv[1] += b; iv[2] += c; iv[3] += d;
 	iv[4] += e; iv[5] += f; iv[6] += g; iv[7] += h;

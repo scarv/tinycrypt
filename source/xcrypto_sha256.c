@@ -186,7 +186,7 @@ uint32_t SHA2_256_K[] = {
 
 static void compress(TCSha256State_t s)
 {
-    uint8_t workspace[64];
+    uint32_t workspace[64];
 
     _xc_bop_setup(0xCAE80000);
     
@@ -216,6 +216,8 @@ static void compress(TCSha256State_t s)
     U8_TO_U32_BE( workspace[ 14 ], s->leftover, 56 );
     U8_TO_U32_BE( workspace[ 15 ], s->leftover, 60 );
 
+    printf("%x\n", a);
+
     for (int i = 16; i < 64; i += 1) {
         workspace[i] = _xc_sha256_s1(workspace[i - 2]) + (workspace[i - 7]) +
                        _xc_sha256_s0(workspace[i - 15]) + (workspace[i - 16]);
@@ -231,6 +233,8 @@ static void compress(TCSha256State_t s)
         SHA2_256_R(c, d, e, f, g, h, a, b, workspace[i + 6], SHA2_256_K[i + 6]);
         SHA2_256_R(b, c, d, e, f, g, h, a, workspace[i + 7], SHA2_256_K[i + 7]);
     }
+
+    printf("%x %x %x %x %x %x %x %x\n", a, b, c, d, e, f, g, h);
     
     s->iv[0] += a;
     s->iv[1] += b;
