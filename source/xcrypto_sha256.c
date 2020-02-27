@@ -2,7 +2,7 @@
 #include <tinycrypt/constants.h>
 #include <tinycrypt/utils.h>
 
-static void compress(TCSha256State_t s);
+static void compress(unsigned int *iv, const uint8_t *data);
 
 int tc_sha256_init(TCSha256State_t s)
 {
@@ -43,7 +43,7 @@ int tc_sha256_update(TCSha256State_t s, const uint8_t *data, size_t datalen)
 	while (datalen-- > 0) {
 		s->leftover[s->leftover_offset++] = *(data++);
 		if (s->leftover_offset >= TC_SHA256_BLOCK_SIZE) {
-			compress(s);
+			compress(s->iv, s->leftover);
 			s->leftover_offset = 0;
 			s->bits_hashed += (TC_SHA256_BLOCK_SIZE << 3);
 		}
@@ -69,7 +69,7 @@ int tc_sha256_final(uint8_t *digest, TCSha256State_t s)
 		/* there is not room for all the padding in this block */
 		_set(s->leftover + s->leftover_offset, 0x00,
 		     sizeof(s->leftover) - s->leftover_offset);
-		compress(s);
+		compress(s->iv, s->leftover);
 		s->leftover_offset = 0;
 	}
 
@@ -86,7 +86,7 @@ int tc_sha256_final(uint8_t *digest, TCSha256State_t s)
 	s->leftover[sizeof(s->leftover) - 8] = (uint8_t)(s->bits_hashed >> 56);
 
 	/* hash the padding and length */
-	compress(s);
+	compress(s->iv, s->leftover);
 
 	/* copy the iv out to digest */
 	for (i = 0; i < TC_SHA256_STATE_BLOCKS; ++i) {
@@ -147,101 +147,112 @@ static inline uint32_t _xc_sha256_s3 (uint32_t rs1) {
     return rd;
 }
 
-#define SHA2_256_F0(a,b,c) ( _xc_bop(a,b,c,0) ) //((a&b) | ( (a|b) & c ) )
-#define SHA2_256_F1(a,b,c) ( _xc_bop(a,b,c,1) ) //(c ^ ( a & ( b ^ c ) ) )
-
-#define SHA2_256_R(a,b,c,d,e,f,g,h,w,k) {                               \
-  uint32_t t_0 = _xc_sha256_s3( e ) + SHA2_256_F1( e, f, g ) + h + w + k; \
-  uint32_t t_1 = _xc_sha256_s2( a ) + SHA2_256_F0( a, b, c );             \
-                                                                        \
-  d +=       t_0;                                                       \
-  h  = t_1 + t_0;                                                       \
-}
-
-#define U8_TO_U32_BE(r,x,i) {                  \
-  (r)  = ( uint32_t )( (x)[ (i) + 3 ] ) <<  0; \
-  (r) |= ( uint32_t )( (x)[ (i) + 2 ] ) <<  8; \
-  (r) |= ( uint32_t )( (x)[ (i) + 1 ] ) << 16; \
-  (r) |= ( uint32_t )( (x)[ (i) + 0 ] ) << 24; \
-}
-
-uint32_t SHA2_256_K[] = {
-    0x428A2F98, 0x71374491, 0xB5C0FBCF, 0xE9B5DBA5,
-    0x3956C25B, 0x59F111F1, 0x923F82A4, 0xAB1C5ED5,
-    0xD807AA98, 0x12835B01, 0x243185BE, 0x550C7DC3,
-    0x72BE5D74, 0x80DEB1FE, 0x9BDC06A7, 0xC19BF174,
-    0xE49B69C1, 0xEFBE4786, 0x0FC19DC6, 0x240CA1CC,
-    0x2DE92C6F, 0x4A7484AA, 0x5CB0A9DC, 0x76F988DA,
-    0x983E5152, 0xA831C66D, 0xB00327C8, 0xBF597FC7,
-    0xC6E00BF3, 0xD5A79147, 0x06CA6351, 0x14292967,
-    0x27B70A85, 0x2E1B2138, 0x4D2C6DFC, 0x53380D13,
-    0x650A7354, 0x766A0ABB, 0x81C2C92E, 0x92722C85,
-    0xA2BFE8A1, 0xA81A664B, 0xC24B8B70, 0xC76C51A3,
-    0xD192E819, 0xD6990624, 0xF40E3585, 0x106AA070,
-    0x19A4C116, 0x1E376C08, 0x2748774C, 0x34B0BCB5,
-    0x391C0CB3, 0x4ED8AA4A, 0x5B9CCA4F, 0x682E6FF3,
-    0x748F82EE, 0x78A5636F, 0x84C87814, 0x8CC70208,
-    0x90BEFFFA, 0xA4506CEB, 0xBEF9A3F7, 0xC67178F2
+/*
+ * Initializing SHA-256 Hash constant words K.
+ * These values correspond to the first 32 bits of the fractional parts of the
+ * cube roots of the first 64 primes between 2 and 311.
+ */
+static const unsigned int k256[64] = {
+	0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1,
+	0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
+	0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786,
+	0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+	0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147,
+	0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13,
+	0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b,
+	0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+	0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a,
+	0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
+	0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
 };
 
-static void compress(TCSha256State_t s)
+static inline unsigned int ROTR(unsigned int a, unsigned int n)
 {
-    uint32_t workspace[64];
+	return (((a) >> n) | ((a) << (32 - n)));
+}
 
-    _xc_bop_setup(0xCAE80000);
-    
-    uint32_t a = s->iv[0];
-    uint32_t b = s->iv[1];
-    uint32_t c = s->iv[2];
-    uint32_t d = s->iv[3];
-    uint32_t e = s->iv[4];
-    uint32_t f = s->iv[5];
-    uint32_t g = s->iv[6];
-    uint32_t h = s->iv[7];
+#define Sigma0(a)(_xc_sha256_s2(a))
+#define Sigma1(a)(_xc_sha256_s3(a))
+#define sigma0(a)(_xc_sha256_s0(a))
+#define sigma1(a)(_xc_sha256_s1(a))
 
-    U8_TO_U32_BE( workspace[  0 ], s->leftover,  0 );
-    U8_TO_U32_BE( workspace[  1 ], s->leftover,  4 );
-    U8_TO_U32_BE( workspace[  2 ], s->leftover,  8 );
-    U8_TO_U32_BE( workspace[  3 ], s->leftover, 12 );
-    U8_TO_U32_BE( workspace[  4 ], s->leftover, 16 );
-    U8_TO_U32_BE( workspace[  5 ], s->leftover, 20 );
-    U8_TO_U32_BE( workspace[  6 ], s->leftover, 24 );
-    U8_TO_U32_BE( workspace[  7 ], s->leftover, 28 );
-    U8_TO_U32_BE( workspace[  8 ], s->leftover, 32 );
-    U8_TO_U32_BE( workspace[  9 ], s->leftover, 36 );
-    U8_TO_U32_BE( workspace[ 10 ], s->leftover, 40 );
-    U8_TO_U32_BE( workspace[ 11 ], s->leftover, 44 );
-    U8_TO_U32_BE( workspace[ 12 ], s->leftover, 48 );
-    U8_TO_U32_BE( workspace[ 13 ], s->leftover, 52 );
-    U8_TO_U32_BE( workspace[ 14 ], s->leftover, 56 );
-    U8_TO_U32_BE( workspace[ 15 ], s->leftover, 60 );
+#define Ch(a, b, c)(_xc_bop(a, b, c, 1))
+#define Maj(a, b, c)(_xc_bop(a, b, c, 0))
 
-    printf("%x\n", a);
+static inline unsigned int BigEndian(const uint8_t **c)
+{
+	unsigned int n = 0;
 
-    for (int i = 16; i < 64; i += 1) {
-        workspace[i] = _xc_sha256_s1(workspace[i - 2]) + (workspace[i - 7]) +
-                       _xc_sha256_s0(workspace[i - 15]) + (workspace[i - 16]);
-    }
-    
-    for (int i =  0; i < 64; i += 8) {
-        SHA2_256_R(a, b, c, d, e, f, g, h, workspace[i + 0], SHA2_256_K[i + 0]);
-        SHA2_256_R(h, a, b, c, d, e, f, g, workspace[i + 1], SHA2_256_K[i + 1]);
-        SHA2_256_R(g, h, a, b, c, d, e, f, workspace[i + 2], SHA2_256_K[i + 2]);
-        SHA2_256_R(f, g, h, a, b, c, d, e, workspace[i + 3], SHA2_256_K[i + 3]);
-        SHA2_256_R(e, f, g, h, a, b, c, d, workspace[i + 4], SHA2_256_K[i + 4]);
-        SHA2_256_R(d, e, f, g, h, a, b, c, workspace[i + 5], SHA2_256_K[i + 5]);
-        SHA2_256_R(c, d, e, f, g, h, a, b, workspace[i + 6], SHA2_256_K[i + 6]);
-        SHA2_256_R(b, c, d, e, f, g, h, a, workspace[i + 7], SHA2_256_K[i + 7]);
-    }
+	n = (((unsigned int)(*((*c)++))) << 24);
+	n |= ((unsigned int)(*((*c)++)) << 16);
+	n |= ((unsigned int)(*((*c)++)) << 8);
+	n |= ((unsigned int)(*((*c)++)));
+	return n;
+}
 
-    printf("%x %x %x %x %x %x %x %x\n", a, b, c, d, e, f, g, h);
-    
-    s->iv[0] += a;
-    s->iv[1] += b;
-    s->iv[2] += c;
-    s->iv[3] += d;
-    s->iv[4] += e;
-    s->iv[5] += f;
-    s->iv[6] += g;
-    s->iv[7] += h;
+static void compress(unsigned int *iv, const uint8_t *data)
+{
+    // b0 = F0 = (a & b) | ((a|b)&c)  Maj
+    // b1 = F1 = (c ^ (a & (b ^ c) )) Ch
+    //
+    // A  B  C | b0  b1
+    // --------|----------
+    // 0  0  0 | 0   0
+    // 0  0  1 | 0   1
+    // 0  1  0 | 0   0
+    // 0  1  1 | 1   1
+    // 1  0  0 | 0   0
+    // 1  0  1 | 1   0
+    // 1  1  0 | 1   1
+    // 1  1  1 | 1   1
+    //
+    // b0 = 11101000 - 0xE8
+    // b1 = 11001010 - 0xCA
+    _xc_bop_setup(0xACE80000);
+
+	unsigned int a, b, c, d, e, f, g, h;
+	unsigned int s0, s1;
+	unsigned int t1, t2;
+	unsigned int work_space[16];
+	unsigned int n;
+	unsigned int i;
+
+	a = iv[0]; b = iv[1]; c = iv[2]; d = iv[3];
+	e = iv[4]; f = iv[5]; g = iv[6]; h = iv[7];
+
+	for (i = 0; i < 16; ++i) {
+		n = BigEndian(&data);
+		t1 = work_space[i] = n;
+
+        //printf(
+        //    "e %08x, f %08x, g %08x, ChX %08x, Ch %08x, MajX %08x, Maj %08x, e %08x, f %08x, g %08x\n",
+        //    e, f, g,
+        //    Ch(e, f, g),
+        //    (e & f) ^ ((~e) & g),
+        //    Maj(a, b, c),
+        //    ((a) & (b)) ^ ((a) & (c)) ^ ((b) & (c)),
+        //    e, f, g
+        //);
+
+		t1 += h + Sigma1(e) + Ch(e, f, g) + k256[i];
+		t2 = Sigma0(a) + Maj(a, b, c);
+		h = g; g = f; f = e; e = d + t1;
+		d = c; c = b; b = a; a = t1 + t2;
+	}
+
+	for ( ; i < 64; ++i) {
+		s0 = work_space[(i+1)&0x0f];
+		s0 = sigma0(s0);
+		s1 = work_space[(i+14)&0x0f];
+		s1 = sigma1(s1);
+
+		t1 = work_space[i&0xf] += s0 + s1 + work_space[(i+9)&0xf];
+		t1 += h + Sigma1(e) + Ch(e, f, g) + k256[i];
+		t2 = Sigma0(a) + Maj(a, b, c);
+		h = g; g = f; f = e; e = d + t1;
+		d = c; c = b; b = a; a = t1 + t2;
+	}
+
+	iv[0] += a; iv[1] += b; iv[2] += c; iv[3] += d;
+	iv[4] += e; iv[5] += f; iv[6] += g; iv[7] += h;
 }
