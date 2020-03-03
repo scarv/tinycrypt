@@ -100,5 +100,12 @@ config TINYCRYPT_XCRYPTO_SHA256
 	help
 	  This option enables support for SHA-256
 	  hash function primitive.
+
+config TINYCRYPT_XCRYPTO_CTR_PRNG
+	bool "XCrypto PRNG in counter mode"
+    depends on !TINYCRYPT_CTR_PRNG
+	help
+	  This option enables support for the pseudo-random number
+	  generator in counter mode.
 endif
 endif
