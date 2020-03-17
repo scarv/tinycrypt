@@ -19,3 +19,4 @@ zephyr_sources_ifdef(CONFIG_TINYCRYPT_XCRYPTO_AES      source/xcrypto_aes_decryp
 zephyr_sources_ifdef(CONFIG_TINYCRYPT_XCRYPTO_AES      source/xcrypto_aes_encrypt.c)
 zephyr_sources_ifdef(CONFIG_TINYCRYPT_XCRYPTO_AES      source/xcrypto_aes_encrypt.S)
 zephyr_sources_ifdef(CONFIG_TINYCRYPT_XCRYPTO_SHA256   source/xcrypto_sha256.c)
+zephyr_sources_ifdef(CONFIG_TINYCRYPT_XCRYPTO_AES_CBC  source/cbc_mode.c)

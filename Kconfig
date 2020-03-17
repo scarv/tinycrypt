@@ -94,6 +94,12 @@ config TINYCRYPT_XCRYPTO_AES
     help
       This option enables support for XCrypto AES-128.
 
+config TINYCRYPT_XCRYPTO_AES_CBC
+    bool "XCrypto AES-128 CBC mode"
+    depends on TINYCRYPT_XCRYPTO_AES
+    help
+      This option enabled support for CBC mode in XCrypto AES-128
+
 config TINYCRYPT_XCRYPTO_SHA256
 	bool "XCrypto SHA-256 Hash function support"
     depends on !TINYCRYPT_SHA256
