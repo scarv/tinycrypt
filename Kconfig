@@ -82,35 +82,33 @@ config TINYCRYPT_AES_CMAC
 	help
 	  This option enables support for AES-128 CMAC mode.
 
-config XCRYPTO
+config TINYCRYPT_XCRYPTO
     bool "XCrypto Support"
+    depends on XCRYPTO
     help
       This option enables XCrypto support for TinyCrypt.
 
-if XCRYPTO
+if TINYCRYPT_XCRYPTO
 config TINYCRYPT_XCRYPTO_AES
-    bool "XCrypto AES-128 decrypt/encrypt"
-    depends on !TINYCRYPT_AES
-    help
-      This option enables support for XCrypto AES-128.
-
-config TINYCRYPT_XCRYPTO_AES_CBC
-    bool "XCrypto AES-128 CBC mode"
-    depends on TINYCRYPT_XCRYPTO_AES
-    help
-      This option enables support for CBC mode in XCrypto AES-128
-
-config TINYCRYPT_XCRYPTO_AES_CTR
-    bool "XCrypto AES-128 CTR mode"
-    depends on TINYCRYPT_XCRYPTO_AES
-    help
-      This option enables support for CTR mode in XCrypto AES-128
+    bool
+    depends on TINYCRYPT_AES
+    default y
 
 config TINYCRYPT_XCRYPTO_SHA256
-	bool "XCrypto SHA-256 Hash function support"
-    depends on !TINYCRYPT_SHA256
-	help
-	  This option enables support for SHA-256
-	  hash function primitive.
+	bool
+    depends on TINYCRYPT_SHA256
+    default y
+endif
+
+if !TINYCRYPT_XCRYPTO
+config TINYCRYPT_NATIVE_AES
+    bool
+    depends on TINYCRYPT_AES
+    default y
+
+config TINYCRYPT_NATIVE_SHA256
+	bool
+    depends on TINYCRYPT_SHA256
+    default y
 endif
 endif
